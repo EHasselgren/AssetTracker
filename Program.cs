@@ -1,7 +1,11 @@
-﻿class Program
+﻿using DotNetEnv;
+class Program
 {
     static async Task Main(string[] args)
     {
+
+        Env.Load();
+
         var assetManager = new AssetManager();
 
         assetManager.AddAsset(new Laptop("MacBook", new DateTime(2021, 10, 8), 1100m, "New York"));
