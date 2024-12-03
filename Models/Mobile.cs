@@ -1,8 +1,9 @@
 ﻿public class MobilePhone : Asset
 {
-    public MobilePhone(string modelName, DateTime purchaseDate, decimal price, string officeLocation)
-        : base(modelName, purchaseDate, price, officeLocation)
+    public MobilePhone() : base() { }
+
+    public MobilePhone(string modelName, DateTime purchaseDate, decimal priceInDollars, string officeLocation)
+        : base(modelName, purchaseDate, priceInDollars, officeLocation)
     {
     }
-
 }

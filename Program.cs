@@ -1,29 +1,31 @@
-﻿using DotNetEnv;
+﻿using Microsoft.EntityFrameworkCore;
+
 class Program
 {
     static async Task Main(string[] args)
     {
+        try
+        {
+            using (var context = new AssetDbContext())
+            {
+                await context.Database.MigrateAsync();
 
-        Env.Load();
+                var seeder = new DbSeeder(context);
+                await seeder.SeedAsync();
+            }
 
-        var assetManager = new AssetManager();
+            var assetManager = new AssetManager();
 
-        assetManager.AddAsset(new Laptop("MacBook", new DateTime(2021, 10, 8), 1100m, "New York"));
-        assetManager.AddAsset(new MobilePhone("iPhone", new DateTime(2020, 5, 12), 600m, "London"));
-        assetManager.AddAsset(new Laptop("HP", new DateTime(2024, 1, 15), 320m, "New York"));
-        assetManager.AddAsset(new Laptop("MacBook", new DateTime(2021, 10, 8), 2200m, "New York"));
-        assetManager.AddAsset(new MobilePhone("iPhone", new DateTime(2020, 5, 12), 100m, "London"));
-        assetManager.AddAsset(new Laptop("HP", new DateTime(2024, 1, 15), 220m, "New York"));
-        assetManager.AddAsset(new Laptop("MacBook", new DateTime(2021, 10, 8), 3200m, "New York"));
-        assetManager.AddAsset(new MobilePhone("iPhone", new DateTime(2020, 5, 12), 600m, "London"));
-        assetManager.AddAsset(new Laptop("HP", new DateTime(2024, 1, 15), 120m, "New York"));
-        assetManager.AddAsset(new Laptop("MacBook", new DateTime(2021, 10, 8), 200m, "New York"));
-        assetManager.AddAsset(new MobilePhone("iPhone", new DateTime(2020, 5, 12), 90m, "London"));
-        assetManager.AddAsset(new Laptop("HP", new DateTime(2024, 1, 15), 100m, "New York"));
-        assetManager.AddAsset(new Laptop("MacBook", new DateTime(2021, 10, 8), 120m, "New York"));
-        assetManager.AddAsset(new MobilePhone("iPhone", new DateTime(2022, 04, 01), 90m, "London"));
-        assetManager.AddAsset(new Laptop("HP", new DateTime(2024, 1, 15), 1000m, "New York"));
-
-        await assetManager.PrintSortedAssetsAsync();
+            Console.WriteLine("Displaying all assets from database:");
+            await assetManager.PrintSortedAssetsAsync();
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error: {ex.Message}");
+            if (ex.InnerException != null)
+            {
+                Console.WriteLine($"Inner Error: {ex.InnerException.Message}");
+            }
+        }
     }
 }

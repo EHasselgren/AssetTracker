@@ -1,54 +1,47 @@
-﻿using System;
+﻿using Microsoft.EntityFrameworkCore;
 using System.Collections.Generic;
-using System.Linq;
 using System.Threading.Tasks;
-using AssetTracking.Helpers;
 
 public class AssetManager
 {
-    private List<Asset> _assets;
+    private readonly AssetDbContext _context;
 
     public AssetManager()
     {
-        _assets = new List<Asset>();
+        _context = new AssetDbContext();
     }
 
-    public void AddAsset(Asset asset)
+    public async Task AddAssetAsync(Asset asset)
     {
-        _assets.Add(asset);
+        await _context.Assets.AddAsync(asset);
+        await _context.SaveChangesAsync();
+    }
+
+    public async Task<List<Asset>> GetAllAssetsAsync()
+    {
+        return await _context.Assets.ToListAsync();
     }
 
     public async Task PrintSortedAssetsAsync()
     {
-        var sortedAssets = _assets
-            .OrderBy(a => a.OfficeLocation)
+        var assets = await GetAllAssetsAsync();
+        var sortedAssets = assets
+            .OrderBy(a => a.GetType().Name)
             .ThenBy(a => a.PurchaseDate)
             .ToList();
 
-        Console.WriteLine("\n| Office       | Asset Type   | Model        | Purchase Date | Price (Dollars) | Price (Local Currency) | Status  |");
-        Console.WriteLine("|--------------|--------------|--------------|---------------|-----------------|------------------------|---------|");
+        Console.WriteLine("\n| Asset Type   | Model        | Purchase Date | Price (Dollars) |");
+        Console.WriteLine("|--------------|--------------|---------------|-----------------|");
 
         foreach (var asset in sortedAssets)
         {
-            var timeLeft = asset.TimeUntilEndOfLife();
-            AssetStatus status = AssetStatusHelper.GetStatusBasedOnDate(timeLeft);
-            Office office = OfficeHelper.GetOfficeByLocation(asset.OfficeLocation);
-            var localPrice = await office.ConvertToLocalCurrency(asset.PriceInDollars);
-            string currencySymbol = CurrencyHelper.GetCurrencySymbol(office);
-            string colorCode = ConsoleFormatter.GetAnsiColorCodeForStatus(status);
-
             Console.WriteLine(
-                $"| {asset.OfficeLocation.PadRight(12)} " +
                 $"| {asset.GetType().Name.PadRight(12)} " +
                 $"| {asset.ModelName.PadRight(12)} " +
                 $"| {asset.PurchaseDate.ToShortDateString().PadRight(13)} " +
-                $"| {asset.PriceInDollars.ToString("N2").PadRight(15)} " +
-                $"| {currencySymbol}{localPrice.ToString("N2").PadRight(23)} " +
-                $"| {colorCode}{status.ToString().PadRight(7)}\u001b[0m |"
+                $"| ${asset.PriceInDollars.ToString("N2").PadRight(14)} |"
             );
         }
-
         Console.WriteLine();
     }
-
 }
