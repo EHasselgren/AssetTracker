@@ -1,4 +1,5 @@
 ﻿using Microsoft.EntityFrameworkCore;
+using Spectre.Console;
 
 class Program
 {
@@ -19,144 +20,161 @@ class Program
 
             await DisplayHeader("Current Assets");
             await assetManager.PrintSortedAssetsAsync();
-            Console.WriteLine("\nPress any key to continue...");
-            Console.ReadKey();
+            AnsiConsole.WriteLine();
+            AnsiConsole.MarkupLine("[blue]Press any key to continue...[/]");
+            Console.ReadKey(true);
 
             while (running)
             {
-                await DisplayMainMenu();
-                var keyInfo = Console.ReadKey(true);
+                var choice = await DisplayMainMenu();
 
-                switch (keyInfo.KeyChar)
+                switch (choice)
                 {
-                    case '1':
+                    case "View All Assets":
                         await DisplayHeader("All Assets");
                         await assetManager.PrintSortedAssetsAsync();
                         await PauseAndContinue();
                         break;
 
-                    case '2':
+                    case "Add New Asset":
                         await DisplayHeader("Add New Asset");
                         await AddNewAsset(assetManager);
                         await PauseAndContinue();
                         break;
 
-                    case '3':
+                    case "Update Asset":
                         await DisplayHeader("Update Asset");
                         await UpdateExistingAsset(assetManager);
                         await PauseAndContinue();
                         break;
 
-                    case '4':
+                    case "Delete Asset":
                         await DisplayHeader("Delete Asset");
                         await DeleteExistingAsset(assetManager);
                         await PauseAndContinue();
                         break;
 
-                    case '5':
-                        await DisplayHeader("Asset Report");
-                        await assetManager.GenerateReportAsync();
+                    case "Generate Report":
+                        await DisplayHeader("Reports");
+                        var reportType = AnsiConsole.Prompt(
+                            new SelectionPrompt<string>()
+                                .Title("[blue]Select Report Type[/]")
+                                .PageSize(3)
+                                .AddChoices(new[] {
+                "Asset Report by Office",
+                "Asset Report by Device",
+                "Back to Main Menu"
+                                }));
+
+                        switch (reportType)
+                        {
+                            case "Asset Report by Office":
+                                await DisplayHeader("Asset Report by Office");
+                                await assetManager.GenerateOfficeReportAsync();
+                                break;
+
+                            case "Asset Report by Device":
+                                await DisplayHeader("Asset Report by Device");
+                                await assetManager.GenerateDeviceReportAsync();
+                                break;
+
+                            case "Back to Main Menu":
+                                continue;
+                        }
+
                         await PauseAndContinue();
                         break;
 
-                    case '6':
+                    case "Exit":
                         await DisplayHeader("Exiting Application");
-                        Console.WriteLine("Thank you for using Asset Management System!");
+                        AnsiConsole.MarkupLine("[green]Thank you for using Asset Management System![/]");
                         running = false;
-                        break;
-
-                    default:
-                        Console.Clear();
-                        Console.WriteLine("Invalid option. Please try again.");
-                        await Task.Delay(1500);
                         break;
                 }
             }
         }
         catch (Exception ex)
         {
-            Console.WriteLine($"Error: {ex.Message}");
+            AnsiConsole.MarkupLine($"[red]Error: {ex.Message}[/]");
             if (ex.InnerException != null)
             {
-                Console.WriteLine($"Inner Error: {ex.InnerException.Message}");
+                AnsiConsole.MarkupLine($"[red]Inner Error: {ex.InnerException.Message}[/]");
             }
             await PauseAndContinue();
         }
     }
 
-    private static async Task DisplayMainMenu()
+    private static async Task<string> DisplayMainMenu()
     {
         Console.Clear();
-        Console.WriteLine("╔════════════════════════════════╗");
-        Console.WriteLine("║     Asset Management System     ║");
-        Console.WriteLine("╠════════════════════════════════╣");
-        Console.WriteLine("║ 1. View All Assets             ║");
-        Console.WriteLine("║ 2. Add New Asset               ║");
-        Console.WriteLine("║ 3. Update Asset                ║");
-        Console.WriteLine("║ 4. Delete Asset                ║");
-        Console.WriteLine("║ 5. Generate Report             ║");
-        Console.WriteLine("║ 6. Exit                        ║");
-        Console.WriteLine("╚════════════════════════════════╝");
-        Console.Write("\nSelect an option: ");
+        var selection = AnsiConsole.Prompt(
+            new SelectionPrompt<string>()
+                .Title("[blue]Asset Management System[/]")
+                .PageSize(7)
+                .AddChoices(new[] {
+                    "View All Assets",
+                    "Add New Asset",
+                    "Update Asset",
+                    "Delete Asset",
+                    "Generate Report",
+                    "Exit"
+                }));
+
+        return selection;
     }
 
     private static async Task DisplayHeader(string title)
     {
         Console.Clear();
-        Console.WriteLine("╔═" + new string('═', title.Length) + "═╗");
-        Console.WriteLine("║ " + title + " ║");
-        Console.WriteLine("╚═" + new string('═', title.Length) + "═╝\n");
+        var rule = new Rule($"[yellow]{title}[/]");
+        rule.Style = Style.Parse("blue");
+        AnsiConsole.Write(rule);
+        AnsiConsole.WriteLine();
     }
 
     private static async Task PauseAndContinue()
     {
-        Console.WriteLine("\nPress any key to continue...");
-        Console.ReadKey();
+        AnsiConsole.WriteLine();
+        AnsiConsole.MarkupLine("[blue]Press any key to continue...[/]");
+        Console.ReadKey(true);
     }
 
     private static async Task AddNewAsset(AssetManager assetManager)
     {
-        Console.WriteLine("Select Asset Type:");
-        Console.WriteLine("1. Laptop");
-        Console.WriteLine("2. Mobile Phone");
-        Console.Write("\nSelect type: ");
+        var assetType = AnsiConsole.Prompt(
+            new SelectionPrompt<string>()
+                .Title("Select Asset Type:")
+                .AddChoices("Laptop", "Mobile Phone"));
 
-        string typeChoice = Console.ReadLine();
+        var modelName = AnsiConsole.Ask<string>("[green]Enter model name:[/]");
 
-        Console.Write("\nEnter model name: ");
-        string modelName = Console.ReadLine();
+        var price = AnsiConsole.Prompt(
+            new TextPrompt<decimal>("[green]Enter price in USD:[/]")
+                .ValidationErrorMessage("[red]Please enter a valid price[/]")
+                .Validate(price => price >= 0 ? ValidationResult.Success() : ValidationResult.Error("Price must be positive")));
 
-        Console.Write("Enter price in USD: ");
-        if (!decimal.TryParse(Console.ReadLine(), out decimal price))
+        var office = AnsiConsole.Prompt(
+            new SelectionPrompt<string>()
+                .Title("Select Office Location:")
+                .AddChoices(new[] {
+                    "New York (USD)",
+                    "Malmö (SEK)",
+                    "London (GBP)"
+                }));
+
+        var officeId = office.StartsWith("New York") ? 1 : office.StartsWith("Malmö") ? 2 : 3;
+
+        Asset newAsset = assetType switch
         {
-            Console.WriteLine("\nInvalid price format.");
-            return;
-        }
-
-        Console.WriteLine("\nSelect Office Location:");
-        Console.WriteLine("1. New York (USD)");
-        Console.WriteLine("2. Malmö (SEK)");
-        Console.WriteLine("3. London (GBP)");
-        Console.Write("\nSelect office: ");
-
-        if (!int.TryParse(Console.ReadLine(), out int officeId) || officeId < 1 || officeId > 3)
-        {
-            Console.WriteLine("\nInvalid office selection.");
-            return;
-        }
-
-        Asset newAsset = typeChoice switch
-        {
-            "1" => new Laptop(modelName, DateTime.Now, price, GetOfficeLocation(officeId)),
-            "2" => new MobilePhone(modelName, DateTime.Now, price, GetOfficeLocation(officeId)),
+            "Laptop" => new Laptop(modelName, DateTime.Now, price, GetOfficeLocation(officeId)),
+            "Mobile Phone" => new MobilePhone(modelName, DateTime.Now, price, GetOfficeLocation(officeId)),
             _ => throw new ArgumentException("Invalid asset type")
         };
         newAsset.OfficeId = officeId;
 
         await assetManager.AddAssetAsync(newAsset);
-        Console.WriteLine("\n✓ Asset added successfully!");
+        AnsiConsole.MarkupLine("\n[green] Asset added successfully![/]");
     }
-
     private static async Task UpdateExistingAsset(AssetManager assetManager)
     {
         await assetManager.PrintSortedAssetsAsync();
@@ -196,7 +214,7 @@ class Program
             asset.OfficeId = officeId;
 
         await assetManager.UpdateAssetAsync(asset);
-        Console.WriteLine("\n✓ Asset updated successfully!");
+        Console.WriteLine("\n Asset updated successfully!");
     }
 
     private static async Task DeleteExistingAsset(AssetManager assetManager)
@@ -213,7 +231,7 @@ class Program
         try
         {
             await assetManager.DeleteAssetAsync(id);
-            Console.WriteLine("\n✓ Asset deleted successfully!");
+            Console.WriteLine("\n Asset deleted successfully!");
         }
         catch (KeyNotFoundException)
         {

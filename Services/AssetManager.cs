@@ -1,5 +1,6 @@
 ﻿using AssetTracking.Helpers;
 using Microsoft.EntityFrameworkCore;
+using Spectre.Console;
 
 public class AssetManager
 {
@@ -54,73 +55,125 @@ public class AssetManager
             .ThenBy(a => a.PurchaseDate)
             .ToListAsync();
 
-        Console.WriteLine("\n| Office | Asset Type | Model | Purchase Date | USD Price | Local Price | Status |");
-        Console.WriteLine("|---------|------------|-------|---------------|-----------|-------------|---------|");
+        var table = new Table()
+            .Border(TableBorder.Rounded)
+            .AddColumn(new TableColumn("ID").Centered())
+            .AddColumn(new TableColumn("Office").LeftAligned())
+            .AddColumn(new TableColumn("Asset Type").LeftAligned())
+            .AddColumn(new TableColumn("Model").LeftAligned())
+            .AddColumn(new TableColumn("Purchase Date").LeftAligned())
+            .AddColumn(new TableColumn("USD Price").RightAligned())
+            .AddColumn(new TableColumn("Local Price").RightAligned())
+            .AddColumn(new TableColumn("Time Left").Centered());
 
         foreach (var asset in assets)
         {
             var timeLeft = asset.TimeUntilEndOfLife();
             var status = AssetStatusHelper.GetStatusBasedOnDate(timeLeft);
-            string colorCode = ConsoleFormatter.GetAnsiColorCodeForStatus(status);
             var localPrice = await asset.Office.ConvertToLocalCurrency(asset.PriceInDollars);
             string currencySymbol = CurrencyHelper.GetCurrencySymbol(asset.Office);
 
-            var line =
-                $"| {asset.Office.Location.PadRight(7)} " +
-                $"| {asset.GetType().Name.PadRight(10)} " +
-                $"| {asset.ModelName.PadRight(5)} " +
-                $"| {asset.PurchaseDate.ToShortDateString().PadRight(13)} " +
-                $"| ${asset.PriceInDollars.ToString("N2").PadRight(9)} " +
-                $"| {currencySymbol}{localPrice.ToString("N2").PadRight(11)} " +
-                $"| {colorCode}{timeLeft.Days} days\u001b[0m |";
+            string timeLeftColor = status switch
+            {
+                AssetStatus.Red => "red",
+                AssetStatus.Yellow => "yellow",
+                _ => "green"
+            };
 
-            Console.WriteLine(line);
+            table.AddRow(
+                asset.Id.ToString(),
+                asset.Office.Location,
+                asset.GetType().Name,
+                asset.ModelName,
+                asset.PurchaseDate.ToShortDateString(),
+                $"${asset.PriceInDollars:N2}",
+                $"{currencySymbol}{localPrice:N2}",
+                $"[{timeLeftColor}]{timeLeft.Days} days[/]"
+            );
         }
-        Console.WriteLine();
-    }
 
-    public async Task GenerateReportAsync()
+        AnsiConsole.Write(table);
+    }
+    public async Task GenerateOfficeReportAsync()
     {
         var assets = await _context.Assets.Include(a => a.Office).ToListAsync();
+        var officeGroups = assets.GroupBy(a => a.Office);
+        var officeReport = new List<OfficeReportData>();
 
-        var officeReport = assets
-            .GroupBy(a => a.Office.Location)
-            .Select(g => new
+        foreach (var group in officeGroups)
+        {
+            var office = group.Key;
+            var totalUSD = group.Sum(a => a.PriceInDollars);
+            var localTotal = await office.ConvertToLocalCurrency(totalUSD);
+            var currencySymbol = CurrencyHelper.GetCurrencySymbol(office);
+
+            officeReport.Add(new OfficeReportData
             {
-                Office = g.Key,
-                TotalAssets = g.Count(),
-                TotalValueUSD = g.Sum(a => a.PriceInDollars),
-                AssetsNearingEndOfLife = g.Count(a => a.TimeUntilEndOfLife().TotalDays <= 180)
+                Office = office.Location,
+                TotalAssets = group.Count(),
+                TotalValueUSD = totalUSD,
+                TotalValueLocal = localTotal,
+                LocalCurrencySymbol = currencySymbol,
+                AssetsNearingEndOfLife = group.Count(a => a.TimeUntilEndOfLife().TotalDays <= 180)
             });
+        }
 
-        Console.WriteLine("\nASSET REPORT BY OFFICE");
-        Console.WriteLine("======================");
+        var table = new Table()
+            .Border(TableBorder.Rounded)
+            .Title("[blue]Asset Report by Office[/]")
+            .AddColumn(new TableColumn("Office").LeftAligned())
+            .AddColumn(new TableColumn("Total Assets").RightAligned())
+            .AddColumn(new TableColumn("Total Value (USD)").RightAligned())
+            .AddColumn(new TableColumn("Total Value (Local)").RightAligned())
+            .AddColumn(new TableColumn("Assets Near EOL").RightAligned());
 
         foreach (var office in officeReport)
         {
-            Console.WriteLine($"\nOffice: {office.Office}");
-            Console.WriteLine($"Total Assets: {office.TotalAssets}");
-            Console.WriteLine($"Total Value (USD): ${office.TotalValueUSD:N2}");
-            Console.WriteLine($"Assets Nearing End of Life: {office.AssetsNearingEndOfLife}");
+            table.AddRow(
+                office.Office,
+                office.TotalAssets.ToString(),
+                $"${office.TotalValueUSD:N2}",
+                $"{office.LocalCurrencySymbol}{office.TotalValueLocal:N2}",
+                office.AssetsNearingEndOfLife.ToString()
+            );
         }
 
-        var typeReport = assets
+        AnsiConsole.Write(table);
+    }
+
+    public async Task GenerateDeviceReportAsync()
+    {
+        var assets = await _context.Assets.Include(a => a.Office).ToListAsync();
+
+        var deviceReport = assets
             .GroupBy(a => a.GetType().Name)
-            .Select(g => new
+            .Select(g => new DeviceReportData
             {
-                Type = g.Key,
+                DeviceType = g.Key,
                 Count = g.Count(),
-                AverageAge = g.Average(a => (DateTime.Now - a.PurchaseDate).TotalDays)
-            });
+                AverageAge = g.Average(a => (DateTime.Now - a.PurchaseDate).TotalDays),
+                TotalValue = g.Sum(a => a.PriceInDollars)
+            })
+            .ToList();
 
-        Console.WriteLine("\nASSET REPORT BY TYPE");
-        Console.WriteLine("===================");
+        var table = new Table()
+            .Border(TableBorder.Rounded)
+            .Title("[blue]Asset Report by Device Type[/]")
+            .AddColumn("Device Type")
+            .AddColumn(new TableColumn("Count").RightAligned())
+            .AddColumn(new TableColumn("Average Age (days)").RightAligned())
+            .AddColumn(new TableColumn("Total Value (USD)").RightAligned());
 
-        foreach (var type in typeReport)
+        foreach (var device in deviceReport)
         {
-            Console.WriteLine($"\nType: {type.Type}");
-            Console.WriteLine($"Total Count: {type.Count}");
-            Console.WriteLine($"Average Age: {type.AverageAge:N0} days");
+            table.AddRow(
+                device.DeviceType,
+                device.Count.ToString(),
+                $"{device.AverageAge:N0}",
+                $"${device.TotalValue:N2}"
+            );
         }
+
+        AnsiConsole.Write(table);
     }
 }
