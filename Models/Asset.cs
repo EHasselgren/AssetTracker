@@ -1,5 +1,4 @@
-﻿using System;
-using System.ComponentModel.DataAnnotations;
+﻿using System.ComponentModel.DataAnnotations;
 
 public class Asset
 {
@@ -8,7 +7,8 @@ public class Asset
     public string ModelName { get; set; }
     public DateTime PurchaseDate { get; set; }
     public decimal PriceInDollars { get; set; }
-    public string OfficeLocation { get; set; }
+    public int OfficeId { get; set; }
+    public virtual Office Office { get; set; }
     public string AssetType { get; set; }
 
     protected Asset() { }
@@ -18,7 +18,6 @@ public class Asset
         ModelName = modelName;
         PurchaseDate = purchaseDate;
         PriceInDollars = priceInDollars;
-        OfficeLocation = officeLocation;
     }
 
     public TimeSpan TimeUntilEndOfLife()

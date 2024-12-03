@@ -1,10 +1,11 @@
-﻿using System;
-using System.Threading.Tasks;
-
-public class Office
+﻿public class Office
 {
-    public string Location { get; }
-    public string CurrencyCode { get; }
+    public int Id { get; set; }
+    public string Location { get; set; }
+    public string CurrencyCode { get; set; }
+    public virtual ICollection<Asset> Assets { get; set; } = new List<Asset>();
+
+    public Office() { }
 
     public Office(string location, string currencyCode)
     {
@@ -22,4 +23,3 @@ public class Office
         return await currencyConverter.ConvertCurrency(priceInUsd, "USD", CurrencyCode);
     }
 }
-
