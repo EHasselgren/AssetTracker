@@ -62,9 +62,9 @@ public class AssetManager
             .AddColumn(new TableColumn("Asset Type").LeftAligned())
             .AddColumn(new TableColumn("Model").LeftAligned())
             .AddColumn(new TableColumn("Purchase Date").LeftAligned())
-            .AddColumn(new TableColumn("USD Price").RightAligned())
-            .AddColumn(new TableColumn("Local Price").RightAligned())
-            .AddColumn(new TableColumn("Time Left").Centered());
+            .AddColumn(new TableColumn("USD Price").LeftAligned())
+            .AddColumn(new TableColumn("Local Price").LeftAligned())
+            .AddColumn(new TableColumn("Time Left").LeftAligned());
 
         foreach (var asset in assets)
         {

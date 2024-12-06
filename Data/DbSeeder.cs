@@ -35,7 +35,7 @@ public class DbSeeder
             new MobilePhone("iPhone 14 Pro", DateTime.Now.AddDays(-1020), 999.99m, "London") { OfficeId = 3 },
             new Laptop("Lenovo ThinkPad X1", DateTime.Now.AddDays(-920), 1499.99m, "Malmö") { OfficeId = 2 },
             new MobilePhone("Samsung Galaxy S23", DateTime.Now.AddDays(-940), 899.99m, "London") { OfficeId = 3 },
-                        new Laptop("Asus ROG", new DateTime(2023, 6, 10), 1799.99m, "New York") { OfficeId = 1 },
+            new Laptop("Asus ROG", new DateTime(2023, 6, 10), 1799.99m, "New York") { OfficeId = 1 },
             new Laptop("MacBook Air", new DateTime(2023, 8, 5), 999.99m, "Malmö") { OfficeId = 2 },
             new Laptop("Lenovo IdeaPad", new DateTime(2023, 9, 25), 799.99m, "London") { OfficeId = 3 },
             new MobilePhone("iPhone 13", new DateTime(2023, 7, 1), 699.99m, "New York") { OfficeId = 1 },
